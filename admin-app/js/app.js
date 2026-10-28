@@ -233,7 +233,7 @@ function buildShell(){
       <button class="sm ghost" id="btnMenu" style="padding:8px 10px" onclick="toggleNav()">☰</button>
       <div class="logo"><img src="img/icon-192.png" alt=""></div>
       <div style="min-width:0">
-        <b>SUT · Site Survey</b>
+        <b>SUT · Admin</b>
         <div class="small" id="hdrSub">${esc(uname())}${isAdmin() ? ' · admin' : ''}</div>
       </div>
       <div class="spacer"></div>
@@ -243,7 +243,7 @@ function buildShell(){
     <nav id="mainNav">
       <div style="display:flex;align-items:center;gap:9px;padding:2px 6px 10px">
         <div class="logo" style="width:38px;height:38px"><img src="img/icon-192.png" alt=""></div>
-        <div><b style="font-size:14px">SUT Survey</b><div class="small">v1.0</div></div>
+        <div><b style="font-size:14px">SUT Admin</b><div class="small">v1.0</div></div>
       </div>
       <div class="navsec">Administration</div>
       <button class="navbtn" data-route="home"  onclick="route('home')"><i>🏠</i> Tableau de bord</button>
