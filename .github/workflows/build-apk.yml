@@ -1,0 +1,140 @@
+name: Build APK — SUT Site Survey
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'web/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contrôles web (bloquant)
+        run: |
+          set -e
+          for f in web/js/*.js; do node --check "$f"; done
+          nohup python3 -m http.server 8091 --directory web >/tmp/s.log 2>&1 &
+          sleep 2
+          curl -s -o /dev/null -w "index %{http_code}\n" http://localhost:8091/
+          for f in index.html css/app.css js/app.js vendor/supabase.js vendor/xlsx.full.min.js \
+                   supabase-config.js img/icon-192.png img/icon-512.png; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8091/$f")
+            echo "$f -> $code"; test "$code" = "200" || (echo "ASSET MANQUANT $f" && exit 1)
+          done
+          grep -q "supabase.js" web/index.html || (echo "supabase-js non chargé" && exit 1)
+          if grep -rq 'service_role' web/ ; then echo "DANGER service_role"; exit 1; fi
+          echo "SMOKE OK"
+
+  build:
+    needs: [smoke]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 11076708
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Prépare les assets web
+        run: bash android/prepare_assets.sh
+
+      - name: Keystore (secrets Play Store ou debug CI)
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > /tmp/release.keystore
+            echo "KEYSTORE_PATH=/tmp/release.keystore" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+            echo "keystore release OK"
+          else
+            keytool -genkeypair -keystore /tmp/debug-ci.keystore -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10950 -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=DZ"
+            echo "KEYSTORE_PATH=/tmp/debug-ci.keystore" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+            echo "keystore debug CI généré"
+          fi
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Build debug + release
+        run: |
+          gradle --project-dir android :site-survey:assembleDebug :site-survey:assembleRelease --stacktrace
+
+      - name: Vérifie les APK (bloquant)
+        run: |
+          AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | head -1)
+          for APK in android/site-survey/build/outputs/apk/debug/site-survey-debug.apk \
+                     android/site-survey/build/outputs/apk/release/site-survey-release.apk; do
+            echo "== $APK"
+            SIZE=$(stat -c%s "$APK"); echo "taille: $SIZE octets"
+            test "$SIZE" -gt 200000 || (echo "APK SUSPECT" && exit 1)
+            unzip -l "$APK" | grep -q "assets/www/index.html" || (echo "ASSETS MANQUANTS" && exit 1)
+            unzip -l "$APK" | grep -q "assets/www/supabase-config.js" || (echo "CONFIG MANQUANTE" && exit 1)
+            unzip -l "$APK" | grep -q "assets/www/vendor/supabase.js" || (echo "SUPABASE-JS MANQUANT" && exit 1)
+            unzip -l "$APK" | grep -q "assets/www/vendor/xlsx.full.min.js" || (echo "XLSX MANQUANT" && exit 1)
+            unzip -l "$APK" | grep -q "assets/www/img/examples/01-panorama.jpg" || (echo "PHOTOS EXEMPLE MANQUANTES" && exit 1)
+            unzip -l "$APK" | grep -q "classes.dex" || (echo "DEX MANQUANT" && exit 1)
+            $AAPT dump badging "$APK" | grep -E "^package:|^application:|^launchable-activity" || (echo "BADGING ECHEC" && exit 1)
+            $AAPT dump badging "$APK" | grep -q "application-icon" || (echo "ICONE MANQUANTE" && exit 1)
+          done
+
+      - name: Vérifie la signature release (bloquant)
+        run: |
+          SIGNER=$(ls $ANDROID_HOME/build-tools/*/apksigner | head -1)
+          $SIGNER verify --print-certs android/site-survey/build/outputs/apk/release/site-survey-release.apk || (echo "SIGNATURE INVALIDE" && exit 1)
+
+      - name: Renomme + checksums
+        run: |
+          mkdir -p dist
+          cp android/site-survey/build/outputs/apk/release/site-survey-release.apk dist/SUT-SiteSurvey-v1.0.apk
+          cp android/site-survey/build/outputs/apk/debug/site-survey-debug.apk dist/SUT-SiteSurvey-v1.0-debug.apk
+          cd dist && sha256sum *.apk > CHECKSUMS.sha256 && ls -la
+
+      - name: Publie la release (APK téléchargeable)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0-apk-${{ github.run_number }}
+          name: SUT Site Survey APK v1.0 (build ${{ github.run_number }})
+          body: |
+            Application SUT Site Survey — APK installable.
+
+            - Rapports terrain (2 pages), photos géolocalisées, export Excel nommé par Locality ID
+            - Connexion par nom d'utilisateur / mot de passe (1 compte par collègue)
+            - Fonctionne hors ligne puis synchronise
+            - Appareil photo + galerie autorisés
+
+            Installation : télécharger le `.apk`, autoriser « Installer des applications inconnues ».
+          files: dist/*.apk
+          draft: false
+          prerelease: false
+
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: sut-apk
+          path: dist/
+          retention-days: 14
