@@ -67,20 +67,31 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -e
-          pip install --quiet cryptography
+          python3 -m pip install --quiet --upgrade cryptography || pip install --quiet --upgrade cryptography || true
+          rm -f /tmp/sut-release.p12
           if python3 android/make_keystore.py /tmp/sut-release.p12 && [ -s /tmp/sut-release.p12 ]; then
             echo "KEYSTORE_PATH=/tmp/sut-release.p12" >> $GITHUB_ENV
-            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> $GITHUB_ENV
-            echo "KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
-            echo "signature STABLE (secrets)"
+            echo "signature STABLE (secrets GitHub)"
           else
-            echo "KEYSTORE_PATH=" >> $GITHUB_ENV
-            echo "KEYSTORE_PASSWORD=SutSurvey2026!" >> $GITHUB_ENV
-            echo "KEY_ALIAS=sutsurvey" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=SutSurvey2026!" >> $GITHUB_ENV
-            echo "::warning::Signature instable (keystore de secours genere par Gradle)"
+            KT="$(command -v keytool || true)"
+            [ -z "$KT" ] && [ -x "$JAVA_HOME/bin/keytool" ] && KT="$JAVA_HOME/bin/keytool"
+            if [ -n "$KT" ]; then
+              "$KT" -genkeypair -keystore /tmp/debug-ci.keystore -alias androiddebugkey \
+                -keyalg RSA -keysize 2048 -validity 10950 -storepass android -keypass android \
+                -dname "CN=Android Debug,O=Android,C=DZ"
+              echo "KEYSTORE_PATH=/tmp/debug-ci.keystore" >> $GITHUB_ENV
+              echo "::warning::Signature instable (keystore de secours keytool)"
+            else
+              echo "::error::Impossible de créer un keystore"
+              exit 1
+            fi
+            echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           fi
+          echo "KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD:-android}" >> $GITHUB_ENV
+          echo "KEY_ALIAS=${KEY_ALIAS:-androiddebugkey}" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=${KEY_PASSWORD:-android}" >> $GITHUB_ENV
 
       - name: Build debug + release
         run: |

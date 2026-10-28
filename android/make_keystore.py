@@ -24,13 +24,16 @@ def main():
         return 2
     try:
         from cryptography.hazmat.primitives.serialization import (
-            load_pem_private_key, load_pem_x509_certificate, pkcs12, BestAvailableEncryption)
+            load_pem_private_key, BestAvailableEncryption)
+        from cryptography.hazmat.primitives.serialization.pkcs12 import (
+            serialize_key_and_certificates)
+        from cryptography.x509 import load_pem_x509_certificate
     except Exception as e:
         print("cryptography manquant:", e)
         return 3
     key = load_pem_private_key(base64.b64decode(key_b64), password=None)
     cert = load_pem_x509_certificate(base64.b64decode(cert_b64))
-    data = pkcs12.serialize_key_and_certificates(
+    data = serialize_key_and_certificates(
         name=alias.encode(), key=key, cert=cert, cas=None,
         encryption_algorithm=BestAvailableEncryption(pwd.encode()))
     with open(out, "wb") as f:
