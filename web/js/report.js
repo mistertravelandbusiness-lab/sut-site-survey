@@ -57,7 +57,7 @@ function fieldHTML(key){
 }
 
 function groupHTML(g){
-  const keys = Object.keys(FR_FIELDS).filter(k => FR_FIELDS[k].g === g);
+  const keys = Object.keys(FR_FIELDS).filter(k => FR_FIELDS[k].g === g && !FR_FIELDS[k].gpsOnly);
   return `<div class="card">
     <h2>${GROUPS[g].icon} ${esc(GROUPS[g].title)}</h2>
     ${keys.map(fieldHTML).join('')}

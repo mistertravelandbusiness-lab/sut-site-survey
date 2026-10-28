@@ -36,9 +36,10 @@ const FR_FIELDS = {
                    sugg:['Oui','Non','À vérifier'] },
 
   /* --- B. Coordonnées & contacts --- */
-  latitude:      { g:'B', label:'Latitude',   type:'num', ph:'ex : 35.7054', sugg:['GPS auto'] },
-  longitude:     { g:'B', label:'Longitude',  type:'num', ph:'ex : -0.6389', sugg:['GPS auto'] },
-  altitude:      { g:'B', label:'Altitude (m)', type:'num', ph:'ex : 148',    sugg:['GPS auto'] },
+  /* gpsOnly : rendus uniquement dans la carte GPS (page 2) — évite les doublons */
+  latitude:      { g:'B', label:'Latitude',   type:'num', gpsOnly:true, ph:'ex : 35.7054' },
+  longitude:     { g:'B', label:'Longitude',  type:'num', gpsOnly:true, ph:'ex : -0.6389' },
+  altitude:      { g:'B', label:'Altitude (m)', type:'num', gpsOnly:true, ph:'ex : 148' },
   site_acq_phone:{ g:'B', label:'Tél. acquisition site', type:'tel', ph:'0X XX XX XX XX', sugg:[] },
   site_acq_email:{ g:'B', label:'E-mail acquisition',    type:'email', ph:'nom@exemple.dz', sugg:[] },
   village_contact:{g:'B', label:'Contact village',       type:'text', ph:'Nom + tél.', sugg:[] },

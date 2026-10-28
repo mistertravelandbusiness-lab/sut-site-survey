@@ -178,14 +178,23 @@ async function enterApp(user){
   ST.user = user;
   $('#lock')?.remove();
   // profil (username + rôle)
+  const metaName = (user.user_metadata && user.user_metadata.username) || '';
   try {
     const { data, error } = await sb.rpc('get_profile');
     if (error) throw error;
     ST.profile = Array.isArray(data) ? data[0] : data;
   } catch (e){
-    ST.profile = { id: user.id, username: (user.user_metadata && user.user_metadata.username) || 'utilisateur', role: 'user' };
+    ST.profile = { id: user.id, username: metaName || 'utilisateur', role: 'user' };
   }
-  if (ST.profile && !ST.profile.username) ST.profile.username = (user.email || '').split('@')[0];
+  // get_profile crée le profil avec l'e-mail : on rétablit le vrai nom d'utilisateur
+  const shown = (ST.profile && ST.profile.username) || '';
+  const looksLikeEmail = shown.includes('@');
+  const wanted = (looksLikeEmail ? (metaName || shown.split('@')[0]) : shown) || 'utilisateur';
+  if (wanted !== shown || !shown){
+    ST.profile.username = wanted;
+    try { await sb.from('users').update({ username: wanted }).eq('id', user.id); } catch (e){}
+  }
+  if (!ST.profile.username) ST.profile.username = (user.email || '').split('@')[0];
   buildShell();
   await refreshReports();
   stateLoadPending();
