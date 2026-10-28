@@ -1,0 +1,33 @@
+/* Signature de release SUT Survey.
+   - CI : secrets KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD
+   - local : fichier android/keystore/sut-release.jks (mot de passe dans keystore/README.txt)
+   - sinon : keystore debug (APK installables, mais signature instable entre builds)
+*/
+def ksEnvPath = System.getenv('KEYSTORE_PATH')
+def ksLocal   = file("$rootDir/keystore/sut-release.jks")
+def useLocal  = ksLocal.exists() && !ksEnvPath
+
+android {
+    signingConfigs {
+        release {
+            if (useLocal) {
+                storeFile ksLocal
+                storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'SutSurvey2026!'
+                keyAlias System.getenv('KEY_ALIAS') ?: 'sutsurvey'
+                keyPassword System.getenv('KEY_PASSWORD') ?: 'SutSurvey2026!'
+            } else {
+                storeFile file(ksEnvPath ?: "${System.getProperty('user.home')}/.android/debug.keystore")
+                storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'android'
+                keyAlias System.getenv('KEY_ALIAS') ?: 'androiddebugkey'
+                keyPassword System.getenv('KEY_PASSWORD') ?: 'android'
+            }
+            enableV1Signing true
+            enableV2Signing true
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}

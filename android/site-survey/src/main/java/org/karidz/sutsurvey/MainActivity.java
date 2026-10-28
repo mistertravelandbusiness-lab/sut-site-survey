@@ -24,6 +24,7 @@ import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -41,7 +42,10 @@ import java.io.File;
 public class MainActivity extends Activity {
 
     private static final String TAG = "SUT";
-    private static final String APP_URL = "file:///android_asset/www/index.html";
+    /* Origine https interne : le stockage local (session, IndexedDB) fonctionne
+       comme sur un vrai site, et l'accès aux assets reste local (aucun réseau). */
+    private static final String APP_HOST = "appassets.androidplatform.net";
+    private static final String APP_URL = "https://" + APP_HOST + "/assets/www/index.html";
     private static final int REQ_FILE = 1001;
     private static final int REQ_PERMS = 1002;
 
@@ -101,6 +105,12 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 21) CookieManager.getInstance().setAcceptThirdPartyCookies(w, true);
 
         w.setWebViewClient(new WebViewClient() {
+            /* Sert les fichiers de assets/www sous https://appassets.androidplatform.net */
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest request) {
+                return intercept(request.getUrl());
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 Uri u = r.getUrl();
@@ -175,6 +185,41 @@ public class MainActivity extends Activity {
                 }
             }
         });
+    }
+
+    /** Lecture d'un asset local pour un appel https://appassets.androidplatform.net */
+    private WebResourceResponse intercept(Uri uri) {
+        try {
+            if (uri == null || !APP_HOST.equals(uri.getHost())) return null;
+            String path = uri.getPath() == null ? "" : uri.getPath();
+            if (path.startsWith("/")) path = path.substring(1);
+            if (!path.startsWith("assets/")) return null;
+            String assetPath = path.substring("assets/".length());
+            java.io.InputStream is = getAssets().open(assetPath);
+            String mime = guessMime(assetPath);
+            String enc = mime.startsWith("text/") || mime.contains("javascript") || mime.contains("json") ? "utf-8" : null;
+            java.util.Map<String,String> headers = new java.util.HashMap<>();
+            headers.put("Access-Control-Allow-Origin", "*");
+            headers.put("Cache-Control", "no-cache");
+            return new WebResourceResponse(mime, enc, 200, "OK", headers, is);
+        } catch (Exception e) {
+            Log.w(TAG, "asset introuvable: " + uri + " (" + e.getMessage() + ")");
+            return null;
+        }
+    }
+
+    private String guessMime(String p) {
+        String s = p.toLowerCase();
+        if (s.endsWith(".html")) return "text/html";
+        if (s.endsWith(".js")) return "application/javascript";
+        if (s.endsWith(".css")) return "text/css";
+        if (s.endsWith(".json")) return "application/json";
+        if (s.endsWith(".png")) return "image/png";
+        if (s.endsWith(".jpg") || s.endsWith(".jpeg")) return "image/jpeg";
+        if (s.endsWith(".svg")) return "image/svg+xml";
+        if (s.endsWith(".woff2")) return "font/woff2";
+        if (s.endsWith(".webmanifest")) return "application/manifest+json";
+        return "application/octet-stream";
     }
 
     /** Appareil photo : sortie vers MediaStore (aucune dépendance androidx nécessaire). */
