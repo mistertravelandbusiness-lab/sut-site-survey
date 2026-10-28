@@ -6,4 +6,5 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "SUT-SiteSurvey"
-include(":site-survey")
+include(":admin")
+include(":user")

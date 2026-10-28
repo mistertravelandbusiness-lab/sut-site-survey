@@ -1,2 +1,0 @@
-window.__SUPABASE_URL = "https://cyvmkvhnympziikfiqca.supabase.co";
-window.__SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5dm1rdmhueW1wemlpa2ZpcWNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNDkxMTAsImV4cCI6MjEwODcyNTExMH0.Wob5fFO2ZR1Zz7NZpQfrwSl6Ryb-qkC5CNHbCzW-ucU";

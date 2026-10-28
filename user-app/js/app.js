@@ -106,14 +106,16 @@ function renderLogin(msg){
   document.body.appendChild(lock);
   document.body.style.overflow = '';
 
-  $('#tabLogin').onclick = () => switchAuthTab('login');
-  $('#tabSignup').onclick = () => switchAuthTab('signup');
+  const tL = $('#tabLogin'), tS = $('#tabSignup');
+  if (tL) tL.onclick = () => switchAuthTab('login');
+  if (tS) tS.onclick = () => switchAuthTab('signup');
+  if (!tS) { $('#signupPane')?.remove(); }
   $$('.pwtoggle').forEach(b => b.onclick = () => {
     const inp = document.getElementById(b.dataset.pw);
     inp.type = inp.type === 'password' ? 'text' : 'password';
   });
-  $('#btnLogin').onclick = doLogin;
-  $('#btnSignup').onclick = doSignup;
+  if ($('#btnLogin')) $('#btnLogin').onclick = doLogin;
+  if ($('#btnSignup')) $('#btnSignup').onclick = doSignup;
   ['liUser','liPass'].forEach(id => $('#' + id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
   $('#' + (msg ? 'liUser' : 'liUser')).focus();
 }
@@ -289,6 +291,10 @@ function bindGlobalEvents(){
 
 /* ---------------- Routes ---------------- */
 function route(r){
+  if ((r === 'admin' || r === 'all') && !isAdmin()){
+    toast('Section réservée à l\'administrateur', 'err');
+    r = 'home';
+  }
   ST.route = r;
   setNav(r);
   animatePage();

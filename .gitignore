@@ -1,0 +1,18 @@
+# build
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+
+# assets générés par android/prepare_assets.sh
+android/*/src/main/assets/www/
+android/*/src/main/assets/
+
+# sorties
+dist/
+*.apk
+*.aab
+*.p12
+*.jks
+*.keystore

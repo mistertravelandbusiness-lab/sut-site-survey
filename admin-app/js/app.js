@@ -105,14 +105,16 @@ function renderLogin(msg){
   document.body.appendChild(lock);
   document.body.style.overflow = '';
 
-  $('#tabLogin').onclick = () => switchAuthTab('login');
-  $('#tabSignup').onclick = () => switchAuthTab('signup');
+  const tL = $('#tabLogin'), tS = $('#tabSignup');
+  if (tL) tL.onclick = () => switchAuthTab('login');
+  if (tS) tS.onclick = () => switchAuthTab('signup');
+  if (!tS) { $('#signupPane')?.remove(); }
   $$('.pwtoggle').forEach(b => b.onclick = () => {
     const inp = document.getElementById(b.dataset.pw);
     inp.type = inp.type === 'password' ? 'text' : 'password';
   });
-  $('#btnLogin').onclick = doLogin;
-  $('#btnSignup').onclick = doSignup;
+  if ($('#btnLogin')) $('#btnLogin').onclick = doLogin;
+  if ($('#btnSignup')) $('#btnSignup').onclick = doSignup;
   ['liUser','liPass'].forEach(id => $('#' + id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
   $('#' + (msg ? 'liUser' : 'liUser')).focus();
 }
@@ -196,6 +198,15 @@ async function enterApp(user){
     try { await sb.from('users').update({ username: wanted }).eq('id', user.id); } catch (e){}
   }
   if (!ST.profile.username) ST.profile.username = (user.email || '').split('@')[0];
+
+  /* ===== APP ADMINISTRATEUR : seuls les comptes role=admin entrent ===== */
+  if (APP_ROLE === 'admin' && (ST.profile.role || 'user') !== 'admin'){
+    try { await sb.auth.signOut(); } catch (e){}
+    ST.user = null; ST.profile = null;
+    renderLogin('Ce compte n\'est pas administrateur. Installe l\'application SUT Survey pour les rapports terrain.');
+    return;
+  }
+
   buildShell();
   await refreshReports();
   stateLoadPending();
@@ -284,6 +295,10 @@ function bindGlobalEvents(){
 
 /* ---------------- Routes ---------------- */
 function route(r){
+  if ((r === 'admin' || r === 'all') && !isAdmin()){
+    toast('Section réservée à l\'administrateur', 'err');
+    r = 'home';
+  }
   ST.route = r;
   setNav(r);
   animatePage();
