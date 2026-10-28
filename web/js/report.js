@@ -412,8 +412,34 @@ function saveDraftSoon(){
 }
 function saveDraft(){
   try {
-    localStorage.setItem(userKey('draft'), JSON.stringify({ report:ST.current, photos:ST.currentPhotos, at:Date.now() }));
+    const photos = {};
+    Object.keys(ST.currentPhotos || {}).forEach(k => {
+      const v = ST.currentPhotos[k];
+      if (v && !String(v).startsWith('blob:')) photos[k] = v;   // blob: = aperçu local non sérialisable
+    });
+    localStorage.setItem(userKey('draft'), JSON.stringify({ report:ST.current, photos, at:Date.now() }));
   } catch (e){}
+}
+
+/* Reprise du brouillon au démarrage (appelée par enterApp dans app.js) */
+function resumeDraft(){
+  try {
+    const d = JSON.parse(localStorage.getItem(userKey('draft')) || 'null');
+    if (!d || !d.report) return false;
+    if (Date.now() - (d.at || 0) > 7 * 24 * 3600 * 1000) return false;
+    const hasData = Object.keys(d.report).some(k => d.report[k] && k !== 'date');
+    if (!hasData) return false;
+    ST.current = d.report;
+    ST.currentPhotos = d.photos || {};
+    ST.currentPage = 1;
+    ST.route = 'edit';
+    animatePage();
+    setNav('new');
+    $('#app').innerHTML = viewEditor(false);
+    wireEditor();
+    toast('Brouillon repris');
+    return true;
+  } catch (e){ return false; }
 }
 function clearDraft(){ try { localStorage.removeItem(userKey('draft')); } catch (e){} }
 function restoreDraftIfAny(){
