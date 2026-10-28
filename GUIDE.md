@@ -1,5 +1,14 @@
 # SUT · Site Survey — guide
 
+## 0. Deux applications séparées
+
+| APK | Pour qui | Contenu |
+|---|---|---|
+| **SUT-Survey-v1.0.apk** | les techniciens (collègues) | rapports terrain, photos, export Excel — inscription libre |
+| **SUT-Admin-v1.0.apk** | l'administrateur | tableau de bord, comptes, suppression d'utilisateur, tous les rapports |
+
+L'APK Admin refuse un compte non-administrateur. Aucun site web : tout se fait dans les applications.
+
 ## 1. Accès
 
 | | |
