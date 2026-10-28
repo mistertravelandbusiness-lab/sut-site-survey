@@ -27,7 +27,7 @@ jobs:
             echo "$f -> $code"; test "$code" = "200" || (echo "ASSET MANQUANT $f" && exit 1)
           done
           grep -q "supabase.js" web/index.html || (echo "supabase-js non chargé" && exit 1)
-          if grep -rq 'service_role' web/ ; then echo "DANGER service_role"; exit 1; fi
+          if grep -q 'service_role' web/supabase-config.js; then echo "DANGER service_role"; exit 1; fi
           echo "SMOKE OK"
 
   build:

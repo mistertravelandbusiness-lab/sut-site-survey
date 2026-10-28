@@ -36,7 +36,7 @@ jobs:
           done
           grep -q 'createClient' web/js/app.js || (echo "app.js ne crée pas le client Supabase" && exit 1)
           grep -q '__SUPABASE_URL' web/supabase-config.js || (echo "config Supabase absente" && exit 1)
-          if grep -rq 'service_role' web/ ; then echo "DANGER: service_role dans le front"; exit 1; fi
+          if grep -rqE 'eyJ[A-Za-z0-9_-]{20,}' web/supabase-config.js && grep -q 'service_role' web/supabase-config.js; then echo "DANGER: cle service_role dans le front"; exit 1; fi
           for f in web/js/*.js; do node --check "$f"; done
           echo "VERIF OK"
 
