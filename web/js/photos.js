@@ -9,7 +9,18 @@ const PHOTO_MAX = 1600;      // px côté max
 const PHOTO_QUALITY = 0.72;  // jpeg
 
 /* ---------- Compression avant upload (data-saver terrain) ---------- */
-function compressImage(file, maxSide = PHOTO_MAX, quality = PHOTO_QUALITY){
+/* Texte incrusté en bas de la photo : locality + date + GPS.
+   Évite les contestations sur le lieu / la date du cliché. */
+function stampLines(){
+  const r = (typeof ST !== 'undefined' && ST.current) ? ST.current : {};
+  const l1 = [r.locality_id, r.locality_name].filter(Boolean).join(' · ') || (typeof uname === 'function' ? uname() : 'SUT');
+  const d = new Date();
+  const l2 = d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+  const gps = (r.latitude && r.longitude) ? `GPS ${r.latitude}, ${r.longitude}` : 'GPS non renseigné';
+  return [l1, l2 + ' · ' + gps];
+}
+
+function compressImage(file, maxSide = PHOTO_MAX, quality = PHOTO_QUALITY, stamp = true){
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -22,6 +33,18 @@ function compressImage(file, maxSide = PHOTO_MAX, quality = PHOTO_QUALITY){
       const cx = cv.getContext('2d');
       cx.fillStyle = '#000'; cx.fillRect(0, 0, w, h);
       cx.drawImage(img, 0, 0, w, h);
+      if (stamp){
+        const lines = stampLines();
+        const pad = Math.round(w * 0.012) + 4;
+        const fs = Math.max(11, Math.round(w * 0.019));
+        const barH = Math.round(fs * (lines.length * 1.5) + pad * 1.4);
+        cx.fillStyle = 'rgba(4,7,16,.62)';
+        cx.fillRect(0, h - barH, w, barH);
+        cx.fillStyle = '#fde68a';
+        cx.font = `bold ${fs}px system-ui,Roboto,sans-serif`;
+        cx.textBaseline = 'top';
+        lines.forEach((t, i) => cx.fillText(t.slice(0, 90), pad, h - barH + pad * 0.6 + i * fs * 1.5));
+      }
       URL.revokeObjectURL(url);
       cv.toBlob(b => b ? resolve(b) : reject(new Error('Compression impossible')), 'image/jpeg', quality);
     };
