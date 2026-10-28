@@ -291,6 +291,8 @@ kbd{font-family:ui-monospace,Menlo,monospace;background:#16224a;border:1px solid
 /* ---------------- Responsive ---------------- */
 @media(min-width:820px){
   body{padding-left:var(--navw)}
+  #btnMenu{display:none!important}
+  .hero .herobg{opacity:.45}
   #mainNav{display:flex}
   #bottomnav{display:none}
   header .logo{display:none}

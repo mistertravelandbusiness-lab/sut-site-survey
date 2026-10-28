@@ -218,7 +218,7 @@ function buildShell(){
   document.body.innerHTML = `
     <div id="navBackdrop" onclick="closeNav()"></div>
     <header>
-      <button class="sm ghost" style="padding:8px 10px" onclick="toggleNav()">☰</button>
+      <button class="sm ghost" id="btnMenu" style="padding:8px 10px" onclick="toggleNav()">☰</button>
       <div class="logo"><img src="img/icon-192.png" alt=""></div>
       <div style="min-width:0">
         <b>SUT · Site Survey</b>
