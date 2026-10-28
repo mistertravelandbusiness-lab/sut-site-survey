@@ -4,8 +4,9 @@
 
 | | |
 |---|---|
-| **Application en ligne** | https://mistertravelandbusiness-lab.github.io/sut-site-survey/ |
-| **APK Android** | https://github.com/mistertravelandbusiness-lab/sut-site-survey/releases/latest |
+| **APK terrain (utilisateurs)** | `SUT-Survey-v1.0.apk` — https://github.com/mistertravelandbusiness-lab/sut-site-survey/releases/latest |
+| **APK administrateur** | `SUT-Admin-v1.0.apk` — même page Releases |
+| **Site web** | aucun (les deux applications sont des APK) |
 | **Base de données** | Supabase → projet **SUT Survey** (`cyvmkvhnympziikfiqca`) |
 
 ### Compte administrateur (créé pour toi)
@@ -15,9 +16,9 @@
 
 ⚠️ Change ce mot de passe dès la première connexion (ou demande-moi de le changer).
 
-### Collègues
+### Collègues — APK *SUT Survey*
 
-Chaque collègue ouvre l'application → **Créer un compte** → choisit son nom d'utilisateur et son mot de passe.
+Chaque collègue installe **SUT-Survey-v1.0.apk** → **Créer un compte** → choisit son nom d'utilisateur et son mot de passe.
 L'inscription est **libre** (pas de validation par e-mail). Chaque compte ne voit **que ses propres rapports** :
 aucun mélange entre collègues.
 
@@ -73,9 +74,10 @@ Le fichier arrive dans le dossier **Téléchargements** du téléphone.
 Le rapport est d'abord gardé **sur le téléphone** (brouillon + file d'attente), puis envoyé dès le retour du réseau.
 Onglet **Synchronisation** pour voir ce qui reste à envoyer. Rien n'est perdu si la connexion coupe.
 
-## 6. Administration
+## 6. Administration — APK *SUT Admin*
 
-Compte `admin` → menu **Utilisateurs** :
+Installer **SUT-Admin-v1.0.apk**, se connecter avec le compte `admin` (un compte non-administrateur est refusé).
+Menu **Utilisateurs** :
 - liste des comptes, rôle, nombre de rapports, date de création
 - **supprimer un utilisateur** (bouton rouge)
 - **Tous les rapports** : tous les rapports de tous les collègues, avec export

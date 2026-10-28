@@ -1,0 +1,34 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'org.karidz.sutsurvey.admin'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'org.karidz.sutsurvey.admin'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+        resConfigs "fr", "en"
+    }
+
+    buildTypes {
+        debug { applicationIdSuffix "" }
+        release { minifyEnabled false; shrinkResources false }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions { resources.excludes += ['META-INF/*'] }
+
+    /* Les assets web viennent de admin-app/ (méthode: app web séparée par APK) */
+    sourceSets {
+        main { assets.srcDirs = ["$rootDir/../admin-app", "src/main/assets"] }
+    }
+}
+
+apply from: "$rootDir/signing.gradle"

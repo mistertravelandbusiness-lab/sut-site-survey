@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=5">
+<meta name="theme-color" content="#060b18">
+<meta name="description" content="SUT Site Survey — rapports terrain, photos géolocalisées, export Excel.">
+<title>SUT · Site Survey</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- Splash (méthode référence) -->
+<div id="splash">
+  <div class="smark"><img src="img/icon-512.png" alt="SUT"></div>
+  <h1>SUT · Site Survey</h1>
+  <div class="small">Rapports terrain</div>
+  <div class="loader"></div>
+</div>
+
+<main id="app"></main>
+<div id="toast"></div>
+
+<!-- supabase-config.js est généré au déploiement (GitHub Actions / APK) :
+     il contient l'URL du projet et la clé anon (publique par design). -->
+<script src="supabase-config.js" onerror="window.__SUPABASE_URL='';window.__SUPABASE_ANON=''"></script>
+<script src="vendor/supabase.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="js/fields.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/photos.js"></script>
+<script>window.__APP_ROLE = "user";</script>
+<script src="js/app.js"></script>
+<script src="js/report.js"></script>
+<script src="js/export.js"></script>
+<script src="js/admin.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', boot);
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>

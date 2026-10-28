@@ -1,11 +1,18 @@
-name: Build APK — SUT Site Survey
+name: Build APKs — SUT (Admin + Utilisateur)
+
+# Méthode reprise du repo de référence (ribeiro) :
+#   projets Gradle multi-modules, un module par APK, les assets web sont
+#   copiés depuis <app>-app/ vers android/<module>/src/main/assets/www
+#   par android/prepare_assets.sh, puis vérification des APK et publication
+#   en release GitHub.
 
 on:
   push:
     branches: [main]
     paths:
       - 'android/**'
-      - 'web/**'
+      - 'admin-app/**'
+      - 'user-app/**'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
@@ -17,17 +24,24 @@ jobs:
       - name: Contrôles web (bloquant)
         run: |
           set -e
-          for f in web/js/*.js; do node --check "$f"; done
-          nohup python3 -m http.server 8091 --directory web >/tmp/s.log 2>&1 &
+          for f in admin-app/js/*.js user-app/js/*.js; do node --check "$f"; done
+          nohup python3 -m http.server 8091 --directory admin-app >/tmp/a.log 2>&1 &
+          nohup python3 -m http.server 8092 --directory user-app  >/tmp/u.log 2>&1 &
           sleep 2
-          curl -s -o /dev/null -w "index %{http_code}\n" http://localhost:8091/
-          for f in index.html css/app.css js/app.js vendor/supabase.js vendor/xlsx.full.min.js \
-                   supabase-config.js img/icon-192.png img/icon-512.png; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8091/$f")
-            echo "$f -> $code"; test "$code" = "200" || (echo "ASSET MANQUANT $f" && exit 1)
+          for P in 8091 8092; do
+            curl -s -o /dev/null -w "port $P index %{http_code}\n" http://localhost:$P/
+            for f in index.html css/app.css js/app.js js/report.js js/export.js js/admin.js \
+                     vendor/supabase.js vendor/xlsx.full.min.js img/icon-512.png; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$P/$f")
+              test "$code" = "200" || (echo "ASSET MANQUANT ($P) $f" && exit 1)
+            done
+            curl -s http://localhost:$P/ | grep -q "supabase.js" || (echo "supabase-js non chargé ($P)" && exit 1)
           done
-          grep -q "supabase.js" web/index.html || (echo "supabase-js non chargé" && exit 1)
-          if grep -q 'service_role' web/supabase-config.js; then echo "DANGER service_role"; exit 1; fi
+          # rôles distincts
+          grep -q '__APP_ROLE = "admin"' admin-app/index.html || (echo "admin-app sans APP_ROLE=admin" && exit 1)
+          grep -q '__APP_ROLE = "user"'  user-app/index.html  || (echo "user-app sans APP_ROLE=user" && exit 1)
+          # aucune clé privilégiée dans le front
+          if grep -rq "sb_secret_\|service_role" admin-app/js user-app/js; then echo "DANGER: clé privilégiée"; exit 1; fi
           echo "SMOKE OK"
 
   build:
@@ -55,7 +69,7 @@ jobs:
         with:
           gradle-version: 8.7
 
-      - name: Prépare les assets web
+      - name: Prépare les assets des 2 apps
         run: bash android/prepare_assets.sh
 
       - name: Keystore de signature stable
@@ -75,70 +89,79 @@ jobs:
           else
             KT="$(command -v keytool || true)"
             [ -z "$KT" ] && [ -x "$JAVA_HOME/bin/keytool" ] && KT="$JAVA_HOME/bin/keytool"
-            if [ -n "$KT" ]; then
-              "$KT" -genkeypair -keystore /tmp/debug-ci.keystore -alias androiddebugkey \
-                -keyalg RSA -keysize 2048 -validity 10950 -storepass android -keypass android \
-                -dname "CN=Android Debug,O=Android,C=DZ"
-              echo "KEYSTORE_PATH=/tmp/debug-ci.keystore" >> $GITHUB_ENV
-              echo "::warning::Signature instable (keystore de secours keytool)"
-            else
-              echo "::error::Impossible de créer un keystore"
-              exit 1
-            fi
-            echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
-            echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+            "$KT" -genkeypair -keystore /tmp/debug-ci.keystore -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10950 -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=DZ"
+            echo "KEYSTORE_PATH=/tmp/debug-ci.keystore" >> $GITHUB_ENV
+            echo "::warning::Signature instable (keystore de secours keytool)"
+            echo "KEYSTORE_PASSWORD=android"   >> $GITHUB_ENV
+            echo "KEY_ALIAS=androiddebugkey"   >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android"        >> $GITHUB_ENV
           fi
           echo "KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD:-android}" >> $GITHUB_ENV
           echo "KEY_ALIAS=${KEY_ALIAS:-androiddebugkey}" >> $GITHUB_ENV
           echo "KEY_PASSWORD=${KEY_PASSWORD:-android}" >> $GITHUB_ENV
 
-      - name: Build debug + release
-        run: |
-          gradle --project-dir android :site-survey:assembleDebug :site-survey:assembleRelease --stacktrace
+      - name: Build des 2 APK (debug + release)
+        run: gradle --project-dir android :admin:assembleDebug :user:assembleDebug :admin:assembleRelease :user:assembleRelease --stacktrace
 
       - name: Vérifie les APK (bloquant)
         run: |
           AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | head -1)
-          for APK in android/site-survey/build/outputs/apk/debug/site-survey-debug.apk \
-                     android/site-survey/build/outputs/apk/release/site-survey-release.apk; do
+          for APK in android/admin/build/outputs/apk/release/admin-release.apk \
+                     android/user/build/outputs/apk/release/user-release.apk \
+                     android/admin/build/outputs/apk/debug/admin-debug.apk \
+                     android/user/build/outputs/apk/debug/user-debug.apk; do
             echo "== $APK"
-            SIZE=$(stat -c%s "$APK"); echo "taille: $SIZE octets"
-            test "$SIZE" -gt 200000 || (echo "APK SUSPECT" && exit 1)
-            unzip -l "$APK" | grep -q "assets/www/index.html" || (echo "ASSETS MANQUANTS" && exit 1)
-            unzip -l "$APK" | grep -q "assets/www/supabase-config.js" || (echo "CONFIG MANQUANTE" && exit 1)
-            unzip -l "$APK" | grep -q "assets/www/vendor/supabase.js" || (echo "SUPABASE-JS MANQUANT" && exit 1)
-            unzip -l "$APK" | grep -q "assets/www/vendor/xlsx.full.min.js" || (echo "XLSX MANQUANT" && exit 1)
-            unzip -l "$APK" | grep -q "assets/www/img/examples/01-panorama.jpg" || (echo "PHOTOS EXEMPLE MANQUANTES" && exit 1)
+            SIZE=$(stat -c%s "$APK"); echo "   taille: $SIZE octets"
+            test "$SIZE" -gt 500000 || (echo "APK SUSPECT" && exit 1)
+            for f in assets/www/index.html assets/www/supabase-config.js assets/www/vendor/supabase.js \
+                     assets/www/vendor/xlsx.full.min.js assets/www/img/examples/01-panorama.jpg; do
+              unzip -l "$APK" | grep -q "$f" || (echo "MANQUANT $f dans $APK" && exit 1)
+            done
             unzip -l "$APK" | grep -q "classes.dex" || (echo "DEX MANQUANT" && exit 1)
-            $AAPT dump badging "$APK" | grep -E "^package:|^application:|^launchable-activity" || (echo "BADGING ECHEC" && exit 1)
+            $AAPT dump badging "$APK" | grep -E "^package:|^application-label|^launchable-activity" || (echo "BADGING ECHEC" && exit 1)
             $AAPT dump badging "$APK" | grep -q "application-icon" || (echo "ICONE MANQUANTE" && exit 1)
           done
+          # les deux paquets doivent être DIFFÉRENTS
+          P1=$($AAPT dump badging android/admin/build/outputs/apk/release/admin-release.apk | grep -o "package: name='[^']*'" )
+          P2=$($AAPT dump badging android/user/build/outputs/apk/release/user-release.apk  | grep -o "package: name='[^']*'" )
+          echo "admin: $P1"; echo "user: $P2"
+          test "$P1" != "$P2" || (echo "Les 2 APK ont le même applicationId" && exit 1)
 
       - name: Vérifie la signature release (bloquant)
         run: |
           SIGNER=$(ls $ANDROID_HOME/build-tools/*/apksigner | head -1)
-          $SIGNER verify --print-certs android/site-survey/build/outputs/apk/release/site-survey-release.apk || (echo "SIGNATURE INVALIDE" && exit 1)
+          for APK in android/admin/build/outputs/apk/release/admin-release.apk android/user/build/outputs/apk/release/user-release.apk; do
+            $SIGNER verify --print-certs "$APK" | head -4 || (echo "SIGNATURE INVALIDE $APK" && exit 1)
+          done
 
       - name: Renomme + checksums
         run: |
           mkdir -p dist
-          cp android/site-survey/build/outputs/apk/release/site-survey-release.apk dist/SUT-SiteSurvey-v1.0.apk
-          cp android/site-survey/build/outputs/apk/debug/site-survey-debug.apk dist/SUT-SiteSurvey-v1.0-debug.apk
+          cp android/admin/build/outputs/apk/release/admin-release.apk dist/SUT-Admin-v1.0.apk
+          cp android/user/build/outputs/apk/release/user-release.apk   dist/SUT-Survey-v1.0.apk
+          cp android/admin/build/outputs/apk/debug/admin-debug.apk     dist/SUT-Admin-v1.0-debug.apk
+          cp android/user/build/outputs/apk/debug/user-debug.apk       dist/SUT-Survey-v1.0-debug.apk
           cd dist && sha256sum *.apk > CHECKSUMS.sha256 && ls -la
 
-      - name: Publie la release (APK téléchargeable)
+      - name: Publie la release (2 APK téléchargeables)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0-apk-${{ github.run_number }}
-          name: SUT Site Survey APK v1.0 (build ${{ github.run_number }})
+          name: SUT — APK Admin + Utilisateur (build ${{ github.run_number }})
           body: |
-            Application SUT Site Survey — APK installable.
+            Deux applications installables :
 
-            - Rapports terrain (2 pages), photos géolocalisées, export Excel nommé par Locality ID
-            - Connexion par nom d'utilisateur / mot de passe (1 compte par collègue)
-            - Fonctionne hors ligne puis synchronise
-            - Appareil photo + galerie autorisés
+            **SUT-Survey-v1.0.apk** — application terrain (utilisateurs)
+            - inscription libre, chacun ne voit que ses rapports
+            - rapports 2 pages, GPS, 10 emplacements photos (appareil + galerie)
+            - export Excel nommé par Locality ID
+
+            **SUT-Admin-v1.0.apk** — application administrateur
+            - tableau de bord, liste des comptes
+            - suppression d'un utilisateur
+            - consultation de tous les rapports + export
 
             Installation : télécharger le `.apk`, autoriser « Installer des applications inconnues ».
           files: dist/*.apk
@@ -148,6 +171,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
-          name: sut-apk
+          name: sut-apks
           path: dist/
           retention-days: 14

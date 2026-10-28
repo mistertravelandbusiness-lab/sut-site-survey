@@ -2,7 +2,7 @@
 
 Application de rapports terrain (2 pages) — photos géolocalisées, export Excel, APK Android.
 
-- **Web (en ligne)** : https://mistertravelandbusiness-lab.github.io/sut-site-survey/
+
 - **APK** : onglet *Releases* → `SUT-SiteSurvey-v1.0.apk`
 - **Base** : Supabase (projet *SUT Survey*) — tables `users`, `rapports`, bucket `rapports`
 

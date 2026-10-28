@@ -1,0 +1,34 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'org.karidz.sutsurvey.user'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'org.karidz.sutsurvey.user'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+        resConfigs "fr", "en"
+    }
+
+    buildTypes {
+        debug { applicationIdSuffix "" }
+        release { minifyEnabled false; shrinkResources false }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions { resources.excludes += ['META-INF/*'] }
+
+    /* Les assets web viennent de user-app/ (méthode: app web séparée par APK) */
+    sourceSets {
+        main { assets.srcDirs = ["$rootDir/../user-app", "src/main/assets"] }
+    }
+}
+
+apply from: "$rootDir/signing.gradle"
