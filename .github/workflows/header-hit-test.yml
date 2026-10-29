@@ -1,0 +1,24 @@
+name: Test tactile barre supérieure
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'admin-app/**'
+      - 'user-app/**'
+      - 'tests/header-hit-test.cjs'
+      - '.github/workflows/header-hit-test.yml'
+  workflow_dispatch:
+jobs:
+  tactile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Installer Playwright et Chromium
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sut-browser" playwright@1.51.1
+          "$RUNNER_TEMP/sut-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Tester les appuis sur petits écrans
+        run: NODE_PATH="$RUNNER_TEMP/sut-browser/node_modules" node tests/header-hit-test.cjs
