@@ -37,6 +37,7 @@ async function buildTemplateReport(r){
  return new Uint8Array(await wb.xlsx.writeBuffer());
 }
 async function doExport(rows){
+ if(typeof photoImportsInFlight !== 'undefined' && photoImportsInFlight > 0){toast('Attendez la fin de l’importation des photos avant l’export','err');return;}
  if(!rows||!rows.length){toast('Aucun rapport à exporter','err');return;}if(rows.length!==1){toast('Sélectionnez un seul rapport par fichier Excel','err');return;}
  const name=exportFileName(rows);try{toast('Préparation du rapport et des photos…');const bytes=await buildTemplateReport(rows[0]);if(window.SUTExport&&typeof window.SUTExport.saveWorkbook==='function'){const encoded=toBase64(bytes);if(encoded.length>40000000)throw Error('Rapport trop volumineux pour cet appareil');window.SUTExport.saveWorkbook(name,encoded);toast('Choisissez où enregistrer le rapport');}else{const url=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);toast('Export : '+name);}return name;}
  catch(e){toast('Export impossible : '+e.message,'err');console.error('Export report failed',e);return null;}

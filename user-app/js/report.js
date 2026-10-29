@@ -184,13 +184,12 @@ function wireEditor(){
     photoActionSheet(slot, {
       currentPath: ST.currentPhotos[key],
       onFile: (file) => handlePhoto(key, file),
-      onDelete: () => { delete ST.currentPhotos[key]; renderPhotosOnly(); }
+      onDelete: () => { deletePhotoSlot(key); }
     });
   });
   $$('#app [data-delphoto]').forEach(el => el.onclick = e => {
     e.stopPropagation();
-    delete ST.currentPhotos[el.dataset.delphoto];
-    renderPhotosOnly();
+    deletePhotoSlot(el.dataset.delphoto);
   });
   restoreDraftIfAny();
 }
@@ -215,35 +214,43 @@ function renderPhotosOnly(){
     photoActionSheet(slot, {
       currentPath: ST.currentPhotos[key],
       onFile: (file) => handlePhoto(key, file),
-      onDelete: () => { delete ST.currentPhotos[key]; renderPhotosOnly(); }
+      onDelete: () => { deletePhotoSlot(key); }
     });
   });
   $$('#app [data-delphoto]').forEach(el => el.onclick = e => {
     e.stopPropagation();
-    delete ST.currentPhotos[el.dataset.delphoto];
-    renderPhotosOnly();
+    deletePhotoSlot(el.dataset.delphoto);
   });
   saveDraftSoon();
 }
 
+let photoImportsInFlight = 0;
+const photoImportVersions = Object.create(null);
+function deletePhotoSlot(key){
+  photoImportVersions[key] = (photoImportVersions[key] || 0) + 1;
+  delete ST.currentPhotos[key];
+  renderPhotosOnly();
+}
 async function handlePhoto(key, file){
   if (!/^image\//.test(file.type)) return toast('Fichier image requis', 'err');
   toast('Traitement de la photo…');
   const reportAtStart = ST.current, userAtStart = ST.user && ST.user.id;
+  const importVersion = photoImportVersions[key] = (photoImportVersions[key] || 0) + 1;
+  photoImportsInFlight++;
   try {
     const blob = await compressImage(file);
-    if (ST.current !== reportAtStart || !ST.user || ST.user.id !== userAtStart) return toast('Rapport changé : veuillez réimporter la photo', 'err');
+    if (ST.current !== reportAtStart || !ST.user || ST.user.id !== userAtStart || photoImportVersions[key] !== importVersion) return toast('Rapport changé : veuillez réimporter la photo', 'err');
     ST.photosTouched = true;
     if (!DEMO && navigator.onLine){
       try {
         const rid = ST.current.id || ('draft-' + Date.now());
         const path = await uploadPhoto(blob, rid, key, ST.user.id, ST.current.locality_id);
-        if (ST.current !== reportAtStart || !ST.user || ST.user.id !== userAtStart) return toast('Rapport changé : veuillez réimporter la photo', 'err');
+        if (ST.current !== reportAtStart || !ST.user || ST.user.id !== userAtStart || photoImportVersions[key] !== importVersion) return toast('Rapport changé : veuillez réimporter la photo', 'err');
         ST.currentPhotos[key] = path;
         toast('Photo importée — enregistrement en cours');
       } catch (e){
         const lid = await idbPut('photo:' + key, blob);
-        if (ST.current !== reportAtStart || !ST.user || ST.user.id !== userAtStart) return toast('Rapport changé : veuillez réimporter la photo', 'err');
+        if (ST.current !== reportAtStart || !ST.user || ST.user.id !== userAtStart || photoImportVersions[key] !== importVersion) return toast('Rapport changé : veuillez réimporter la photo', 'err');
         ST.currentPhotos[key] = 'local:' + lid;
         toast('Hors ligne : photo gardée sur le téléphone', 'err');
       }
@@ -252,13 +259,15 @@ async function handlePhoto(key, file){
       toast('Photo ajoutée (démo) ✓');
     } else {
       const lid = await idbPut('photo:' + key, blob);
-      if (ST.current !== reportAtStart || !ST.user || ST.user.id !== userAtStart) return toast('Rapport changé : veuillez réimporter la photo', 'err');
+      if (ST.current !== reportAtStart || !ST.user || ST.user.id !== userAtStart || photoImportVersions[key] !== importVersion) return toast('Rapport changé : veuillez réimporter la photo', 'err');
       ST.currentPhotos[key] = 'local:' + lid;
       toast('Hors ligne : photo gardée sur le téléphone', 'err');
     }
     renderPhotosOnly();
   } catch (e){
     toast(e.message || 'Photo impossible', 'err');
+  } finally {
+    photoImportsInFlight--;
   }
 }
 
