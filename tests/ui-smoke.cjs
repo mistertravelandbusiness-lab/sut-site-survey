@@ -32,7 +32,7 @@ async function login(app,role){app.doc.querySelector('#liUser').value=role;app.d
  await login(user,'user');
  for(const selector of ['[data-route="reports"].tabbtn','[data-route="export"].tabbtn','[data-route="home"].tabbtn']){await click(user.doc,selector);assert(user.doc.querySelector('#app').textContent.trim(),'Section vide '+selector);}
  await click(user.doc,'#btnNew');assert(user.doc.querySelector('#page1'),'Formulaire absent');
- await click(user.doc,'#page2 button, #app .locktabs button:nth-child(2)').catch(async()=>{await click(user.doc,'#app .locktabs button:nth-child(2)')});
+ await click(user.doc,'#app .locktabs button:nth-child(2)');
  assert(!user.doc.querySelector('#page2').classList.contains('hidden'),'Page 2 absente');
  const photo=user.doc.querySelector('[data-shot]');assert(photo,'Bouton photo absent');photo.click();await delay(20);assert(user.doc.querySelector('#modal'),'Choix photo absent');
  await click(user.doc,'#modal .mhead button');
