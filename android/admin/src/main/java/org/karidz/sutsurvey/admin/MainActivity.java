@@ -48,6 +48,8 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://" + APP_HOST + "/assets/www/index.html";
     private static final int REQ_FILE = 1001;
     private static final int REQ_PERMS = 1002;
+    private static final int REQ_EXPORT = 1003;
+    private byte[] pendingExport;
 
     private WebView web;
     private ValueCallback<Uri[]> filePathCallback;
@@ -59,6 +61,16 @@ public class MainActivity extends Activity {
         web = new WebView(this);
         web.setBackgroundColor(0xFF060B18);
         setContentView(web);
+        web.setOnApplyWindowInsetsListener((v, insets) -> {
+            if (Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
+                v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            } else {
+                v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+            }
+            return insets;
+        });
+        web.requestApplyInsets();
         configure(web);
 
         web.loadUrl(APP_URL);
@@ -87,6 +99,7 @@ public class MainActivity extends Activity {
     }
 
     private void configure(WebView w) {
+        w.addJavascriptInterface(new ExportBridge(), "SUTExport");
         WebSettings s = w.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -187,6 +200,32 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Save the generated workbook via the Android document picker, without storage permission. */
+    private class ExportBridge {
+        @android.webkit.JavascriptInterface
+        public void saveWorkbook(String filename, String encoded) {
+            if (encoded == null || encoded.length() > 40000000) return;
+            runOnUiThread(() -> {
+                Uri current = Uri.parse(web.getUrl() == null ? "" : web.getUrl());
+                if (!"https".equals(current.getScheme()) || !APP_HOST.equals(current.getHost())) return;
+                try {
+                    if (pendingExport != null) { Toast.makeText(MainActivity.this, "Un export est déjà en cours", Toast.LENGTH_SHORT).show(); return; }
+                    pendingExport = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT);
+                    String name = filename == null ? "rapport.xlsx" : filename.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    if (!name.toLowerCase(java.util.Locale.ROOT).endsWith(".xlsx")) name += ".xlsx";
+                    Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                    intent.putExtra(Intent.EXTRA_TITLE, name);
+                    startActivityForResult(intent, REQ_EXPORT);
+                } catch (Exception e) {
+                    pendingExport = null;
+                    Toast.makeText(MainActivity.this, "Impossible d'ouvrir l'enregistrement", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+    }
+
     /** Lecture d'un asset local pour un appel https://appassets.androidplatform.net */
     private WebResourceResponse intercept(Uri uri) {
         try {
@@ -265,6 +304,22 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
+        if (req == REQ_EXPORT) {
+            byte[] bytes = pendingExport;
+            pendingExport = null;
+            if (res == RESULT_OK && data != null && data.getData() != null && bytes != null) {
+                try (java.io.OutputStream out = getContentResolver().openOutputStream(data.getData())) {
+                    if (out == null) throw new java.io.IOException("Output stream unavailable");
+                    out.write(bytes);
+                    Toast.makeText(this, "Rapport Excel enregistré", Toast.LENGTH_LONG).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, "Échec de l'enregistrement du rapport", Toast.LENGTH_LONG).show();
+                }
+            } else {
+                Toast.makeText(this, "Export annulé", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
         if (req == REQ_FILE) {
             Uri[] result = null;
             if (res == RESULT_OK) {

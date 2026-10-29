@@ -54,8 +54,14 @@ function doExport(rows){
   if (pIdx.length > 1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pIdx), 'Photos');
 
   const name = exportFileName(rows);
-  XLSX.writeFile(wb, name, { compression: true });
-  toast('Export : ' + name);
+  if (window.SUTExport && typeof window.SUTExport.saveWorkbook === 'function') {
+    const encoded = XLSX.write(wb, { bookType: 'xlsx', type: 'base64', compression: true });
+    window.SUTExport.saveWorkbook(name, encoded);
+    toast('Choisissez où enregistrer le rapport');
+  } else {
+    XLSX.writeFile(wb, name, { compression: true });
+    toast('Export : ' + name);
+  }
   return name;
 }
 
@@ -108,7 +114,16 @@ function wireExport(){
 }
 function exportSelectAll(){ (ST.reports || []).forEach(r => EXPORT_SEL.add(r.id)); route('export'); }
 function exportSelectNone(){ EXPORT_SEL.clear(); route('export'); }
-function exportSingle(id){ const r = ST.reports.find(x => x.id === id); if (r) doExport([r]); }
+async function exportSingle(id){
+  const own = ST.reports.find(x => x.id === id);
+  if (own) return doExport([own]);
+  try {
+    const { data, error } = await sb.from('rapports').select('*').eq('id', id).single();
+    if (error) throw error;
+    data.photo_slots = parseSlots(data.photo_slots);
+    doExport([data]);
+  } catch (e) { toast('Export impossible : ' + e.message, 'err'); }
+}
 function exportSelected(){
   const rows = (ST.reports || []).filter(r => EXPORT_SEL.has(r.id));
   if (!rows.length) return toast('Sélectionne au moins un rapport', 'err');

@@ -54,8 +54,14 @@ function doExport(rows){
   if (pIdx.length > 1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pIdx), 'Photos');
 
   const name = exportFileName(rows);
-  XLSX.writeFile(wb, name, { compression: true });
-  toast('Export : ' + name);
+  if (window.SUTExport && typeof window.SUTExport.saveWorkbook === 'function') {
+    const encoded = XLSX.write(wb, { bookType: 'xlsx', type: 'base64', compression: true });
+    window.SUTExport.saveWorkbook(name, encoded);
+    toast('Choisissez où enregistrer le rapport');
+  } else {
+    XLSX.writeFile(wb, name, { compression: true });
+    toast('Export : ' + name);
+  }
   return name;
 }
 
