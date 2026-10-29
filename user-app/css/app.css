@@ -326,3 +326,18 @@ img{max-width:100%}
 #surveyPauseOverlay img{width:min(120px,32vw);height:auto;animation:surveyLogoPulse 1.8s ease-in-out infinite}
 @keyframes surveyLogoPulse{0%,100%{opacity:.45;transform:scale(.94)}50%{opacity:1;transform:scale(1.04)}}
 @media(prefers-reduced-motion:reduce){#surveyPauseOverlay img{animation:none;opacity:1}}
+
+/* Barre supérieure : zones tactiles généreuses et lisibles, sans masquer la zone système. */
+header{min-height:70px;padding:10px 12px;gap:8px}
+header::after{pointer-events:none}
+header button{flex:none;min-height:48px;min-width:48px;touch-action:manipulation}
+header #btnMenu,header #btnSync{padding:8px!important;font-size:20px!important;line-height:1}
+header #btnNew,header #btnUsers{min-width:82px;padding:9px 10px!important;font-size:13px!important;white-space:nowrap}
+header > div:not(.logo):not(.spacer){min-width:0;overflow:hidden}
+header > div:not(.logo):not(.spacer) b,header #hdrSub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:819px){
+  header{display:grid;grid-template-columns:48px 34px minmax(0,1fr) 48px max-content;gap:6px;min-height:70px;padding:10px 8px}
+  header .spacer{display:none}
+  header .logo{width:34px;height:34px}
+}
+@media(max-width:320px){header{grid-template-columns:48px minmax(0,1fr) 48px max-content;gap:4px}header .logo{display:none}header #btnNew,header #btnUsers{min-width:76px;padding:8px!important;font-size:12px!important}}

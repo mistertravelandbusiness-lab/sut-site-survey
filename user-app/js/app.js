@@ -263,15 +263,15 @@ function buildShell(){
   document.body.innerHTML = `
     <div id="navBackdrop" onclick="closeNav()"></div>
     <header>
-      <button class="sm ghost" id="btnMenu" style="padding:8px 10px" onclick="toggleNav()">☰</button>
+      <button class="sm ghost" id="btnMenu" aria-label="Ouvrir le menu" onclick="toggleNav()">☰</button>
       <div class="logo"><img src="img/icon-192.png" alt=""></div>
       <div style="min-width:0">
         <b>SUT · Site Survey</b>
         <div class="small" id="hdrSub">${esc(uname())}${isAdmin() ? ' · admin' : ''}</div>
       </div>
       <div class="spacer"></div>
-      <button class="sm ghost" id="btnSync" style="padding:8px 10px" title="Synchroniser">⇅<span id="syncDot"></span></button>
-      <button class="sm" id="btnNew" style="padding:8px 11px">+ Rapport</button>
+      <button class="sm ghost" id="btnSync" aria-label="Synchronisation" title="Synchronisation">⇅<span id="syncDot"></span></button>
+      <button class="sm" id="btnNew" aria-label="Créer un rapport">+ Rapport</button>
     </header>
     <nav id="mainNav">
       <div style="display:flex;align-items:center;gap:9px;padding:2px 6px 10px">
@@ -305,7 +305,7 @@ function buildShell(){
     </div>
     <div id="toast"></div>`;
   $('#btnNew').onclick = () => newReport();
-  $('#btnSync').onclick = () => syncNow();
+  $('#btnSync').onclick = () => { route('sync'); syncNow(); };
 }
 
 function bindGlobalEvents(){
