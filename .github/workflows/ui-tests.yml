@@ -1,0 +1,22 @@
+name: UI tests SUT
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'admin-app/**'
+      - 'user-app/**'
+      - 'tests/**'
+      - '.github/workflows/ui-tests.yml'
+  workflow_dispatch:
+jobs:
+  buttons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Installer le moteur de test
+        run: npm install --prefix "$RUNNER_TEMP/sut-ui" jsdom@22
+      - name: Tester les écrans et boutons (base simulée)
+        run: NODE_PATH="$RUNNER_TEMP/sut-ui/node_modules" node tests/ui-smoke.cjs
