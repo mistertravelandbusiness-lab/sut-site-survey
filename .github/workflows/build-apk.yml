@@ -42,6 +42,8 @@ jobs:
           grep -q '__APP_ROLE = "user"'  user-app/index.html  || (echo "user-app sans APP_ROLE=user" && exit 1)
           # aucune clé privilégiée dans le front
           if grep -rq "sb_secret_\|service_role" admin-app/js user-app/js; then echo "DANGER: clé privilégiée"; exit 1; fi
+          npm install --prefix "$RUNNER_TEMP/sut-ui" jsdom@22
+          NODE_PATH="$RUNNER_TEMP/sut-ui/node_modules" node tests/ui-smoke.cjs
           echo "SMOKE OK"
 
   build:

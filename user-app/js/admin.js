@@ -62,17 +62,18 @@ async function loadAdmin(){
             : `<button class="sm red" onclick="deleteUser('${u.id}','${esc(u.username || '')}')">Supprimer</button>`}</td>
         </tr>`).join('')}
       </table></div>
-      <p class="small" style="margin-top:9px">⚠️ La suppression d'un utilisateur supprime son profil. Ses rapports restent visibles pour l'admin dans « Tous les rapports ».</p>
+      <p class="small" style="margin-top:9px">⚠️ La suppression efface le compte et ses rapports. Les fichiers photo déjà stockés peuvent subsister.</p>
     </div>`;
 }
 
 async function deleteUser(id, username){
   const ok = await confirmDialog('Supprimer cet utilisateur ?',
-    `<b>${esc(username)}</b> ne pourra plus se connecter. Cette action est définitive.`, 'Supprimer');
+    `Le compte <b>${esc(username)}</b> et tous ses rapports seront supprimés définitivement. Les fichiers photo déjà stockés peuvent subsister.`, 'Supprimer');
   if (!ok) return;
   try {
-    const { error } = await sb.rpc('delete_user', { p_id: id });
+    const { data, error } = await sb.rpc('delete_user', { p_id: id });
     if (error) throw error;
+    if (!data) throw new Error('Compte introuvable');
     toast('Utilisateur supprimé');
     loadAdmin();
   } catch (e){ toast(e.message, 'err'); }
