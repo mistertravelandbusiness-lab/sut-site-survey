@@ -9,6 +9,8 @@ const CFG = {
 };
 let sb = null;
 let DEMO = false;          // mode démo si la config manque (aperçu GitHub)
+let reportLiveChannel = null;
+let reportLiveTimer = null;
 const FAKE_DOMAIN = '@sut-users.app';
 /* APP_ROLE = quel APK tourne : 'user' (SUT Survey) ou 'admin' (SUT Admin) */
 const APP_ROLE = window.__APP_ROLE || 'user';
@@ -206,6 +208,31 @@ async function enterApp(user){
   if (!resumeDraft()) route('home');
   else updateSyncDot();
   if (ST.pending.length) toast(`${ST.pending.length} rapport(s) en attente de synchronisation`);
+  startReportLiveUpdates();
+}
+
+function startReportLiveUpdates(){
+  if (!sb || !ST.user || DEMO) return;
+  if (reportLiveChannel) sb.removeChannel(reportLiveChannel);
+  const owner = ST.user.id;
+  const spec = { event:'*', schema:'public', table:'rapports' };
+  if (APP_ROLE !== 'admin') spec.filter = `user_id=eq.${owner}`;
+  reportLiveChannel = sb.channel('rapport-live-' + owner)
+    .on('postgres_changes', spec, () => {
+      clearTimeout(reportLiveTimer);
+      reportLiveTimer = setTimeout(async () => {
+        if (!ST.user || ST.user.id !== owner) return;
+        if (APP_ROLE === 'admin') {
+          ALL_REPORTS = [];
+          if (ST.route === 'admin') loadAdmin();
+          else if (ST.route === 'all' || ST.route === 'reports') loadAll();
+          else if (ST.route === 'home' && typeof loadAdminHome === 'function') loadAdminHome();
+        } else if (ST.route !== 'edit' && ST.route !== 'report') {
+          await refreshReports();
+          if (ST.route === 'reports' || ST.route === 'home') route(ST.route);
+        }
+      }, 500);
+    }).subscribe();
 }
 
 async function doLogout(){
@@ -213,6 +240,8 @@ async function doLogout(){
   if (typeof draftTimer !== 'undefined') clearTimeout(draftTimer);
   if (typeof cloudTimer !== 'undefined') clearTimeout(cloudTimer);
   if (ST.current && (ST.route === 'edit' || ST.route === 'report')) saveDraft();
+  clearTimeout(reportLiveTimer);
+  if (sb && reportLiveChannel) { sb.removeChannel(reportLiveChannel); reportLiveChannel = null; }
   const signingOut = sb ? sb.auth.signOut({ scope: 'local' }) : Promise.resolve();
   ST.user = null; ST.profile = null; ST.current = null;
   ST.reports = []; ST.pending = []; ST.currentPhotos = {};
