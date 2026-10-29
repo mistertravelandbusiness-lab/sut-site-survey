@@ -223,7 +223,7 @@ public class MainActivity extends Activity {
                 try {
                     if (pendingExport != null) { Toast.makeText(MainActivity.this, "Un export est déjà en cours", Toast.LENGTH_SHORT).show(); return; }
                     pendingExport = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT);
-                    String name = filename == null ? "rapport.xlsx" : filename.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    String name = filename == null ? "rapport.xlsx" : filename.replaceAll("[^\\p{L}\\p{N} ._()°-]", "_");
                     if (!name.toLowerCase(java.util.Locale.ROOT).endsWith(".xlsx")) name += ".xlsx";
                     Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);

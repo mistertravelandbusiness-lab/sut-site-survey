@@ -116,7 +116,8 @@ jobs:
             SIZE=$(stat -c%s "$APK"); echo "   taille: $SIZE octets"
             test "$SIZE" -gt 500000 || (echo "APK SUSPECT" && exit 1)
             for f in assets/www/index.html assets/www/supabase-config.js assets/www/vendor/supabase.js \
-                     assets/www/vendor/xlsx.full.min.js assets/www/img/examples/01-panorama.jpg; do
+                     assets/www/vendor/xlsx.full.min.js assets/www/vendor/exceljs.min.js \
+                     assets/www/assets/report-template.xlsx assets/www/img/examples/01-panorama.jpg; do
               unzip -l "$APK" | grep -q "$f" || (echo "MANQUANT $f dans $APK" && exit 1)
             done
             unzip -l "$APK" | grep -q "classes.dex" || (echo "DEX MANQUANT" && exit 1)
