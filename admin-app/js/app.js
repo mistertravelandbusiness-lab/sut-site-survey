@@ -210,16 +210,23 @@ async function enterApp(user){
   buildShell();
   await refreshReports();
   stateLoadPending();
+  if (ST.pending.length && navigator.onLine) syncNow(true);
   if (!resumeDraft()) route('home');
   else updateSyncDot();
   if (ST.pending.length) toast(`${ST.pending.length} rapport(s) en attente de synchronisation`);
 }
 
 async function doLogout(){
-  const ok = await confirmDialog('Se déconnecter ?', 'Tes rapports non synchronisés restent sur ce téléphone.', 'Se déconnecter', false);
-  if (!ok) return;
-  try { await sb.auth.signOut(); } catch (e) {}
-  location.reload();
+  // Leave immediately without navigating the WebView to a browser URL.
+  if (typeof draftTimer !== 'undefined') clearTimeout(draftTimer);
+  if (typeof cloudTimer !== 'undefined') clearTimeout(cloudTimer);
+  if (ST.current && (ST.route === 'edit' || ST.route === 'report')) saveDraft();
+  const signingOut = sb ? sb.auth.signOut({ scope: 'local' }) : Promise.resolve();
+  ST.user = null; ST.profile = null; ST.current = null;
+  ST.reports = []; ST.pending = []; ST.currentPhotos = {};
+  document.body.innerHTML = '';
+  renderLogin();
+  try { await signingOut; } catch (e) { console.warn('Local sign out failed'); }
 }
 
 /* ---------------- Shell ---------------- */
@@ -272,7 +279,7 @@ function buildShell(){
 }
 
 function bindGlobalEvents(){
-  window.addEventListener('online',  () => { toast('Connexion rétablie — synchronisation…'); syncNow(true); });
+  window.addEventListener('online',  () => { if (ST.user) { syncNow(true); if (ST.current) saveDraftSoon(); } });
   window.addEventListener('offline', () => toast('Hors ligne : les rapports sont enregistrés sur le téléphone', 'err'));
   document.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeModal(); document.getElementById('lightbox')?.remove(); } });
   document.addEventListener('backbutton', () => { window.androidBack(); }, false);

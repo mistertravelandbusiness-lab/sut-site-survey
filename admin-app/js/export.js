@@ -43,15 +43,7 @@ function doExport(rows){
   const ws = buildSheet(rows);
   XLSX.utils.book_append_sheet(wb, ws, 'SUT Survey');
 
-  // 2e onglet : index des photos (utile pour le contrôle qualité)
-  const pIdx = [['LOCALITY ID', 'EMPLACEMENT', 'URL PHOTO']];
-  rows.forEach(r => {
-    PHOTO_SLOTS.forEach(s => {
-      const p = (r.photo_slots || {})[s.key];
-      if (p && !String(p).startsWith('img/examples')) pIdx.push([r.locality_id || '', s.label, photoUrl(p) || '']);
-    });
-  });
-  if (pIdx.length > 1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pIdx), 'Photos');
+  // Les adresses techniques des photos ne sont jamais exportées.
 
   const name = exportFileName(rows);
   if (window.SUTExport && typeof window.SUTExport.saveWorkbook === 'function') {

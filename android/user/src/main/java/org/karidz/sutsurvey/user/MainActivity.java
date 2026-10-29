@@ -128,6 +128,7 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 Uri u = r.getUrl();
                 String sc = u.getScheme() == null ? "" : u.getScheme();
+                if ("https".equals(sc) && APP_HOST.equals(u.getHost())) return false;
                 if (sc.startsWith("http") && !u.toString().startsWith("file://")) {
                     // liens externes -> navigateur
                     try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (Exception e) { }
