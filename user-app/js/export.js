@@ -15,8 +15,11 @@ function placeFittedImage(wb,sh,data,dims,zone){
  for(let c=c0;c<c1;c++)widths.push(Math.max(20,(sh.getColumn(c+1).width||10)*7+5));
  for(let r=r0;r<=r1;r++)heights.push((sh.getRow(r).height||15)*4/3);
  const width=widths.reduce((a,b)=>a+b,0),height=heights.reduce((a,b)=>a+b,0),scale=Math.min((width-12)/dims.width,(height-12)/dims.height),w=dims.width*scale,h=dims.height*scale;
- const pos=(sizes,start,px)=>{let i=0;while(i<sizes.length-1&&px>=sizes[i]){px-=sizes[i];i++;}return start+i+px/sizes[i];};
- const x=(width-w)/2,y=(height-h)/2,tl={col:pos(widths,c0,x),row:pos(heights,r0-1,y)},br={col:pos(widths,c0,x+w),row:pos(heights,r0-1,y+h)};
+ // Excel offsets are EMU, not ExcelJS's internal 10000-based column units.
+ // Native markers keep the image's aspect ratio and keep it inside the photo box.
+ const pos=(sizes,start,px)=>{let i=0;while(i<sizes.length-1&&px>=sizes[i]){px-=sizes[i];i++;}return {index:start+i,offset:Math.max(0,Math.round(px*9525))};};
+ const marker=(x,y)=>{const col=pos(widths,c0,x),row=pos(heights,r0-1,y);return {nativeCol:col.index,nativeColOff:col.offset,nativeRow:row.index,nativeRowOff:row.offset};};
+ const x=(width-w)/2,y=(height-h)/2,tl=marker(x,y),br=marker(x+w,y+h);
  const id=wb.addImage({base64:'data:image/jpeg;base64,'+toBase64(new Uint8Array(data)),extension:'jpeg'});sh.addImage(id,{tl,br,editAs:'oneCell'});
 }
 async function buildTemplateReport(r){

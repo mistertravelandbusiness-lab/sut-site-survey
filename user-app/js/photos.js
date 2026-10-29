@@ -20,7 +20,7 @@ function stampLines(){
   return [l1, l2 + ' · ' + gps];
 }
 
-function compressImage(file, maxSide = PHOTO_MAX, quality = PHOTO_QUALITY, stamp = true){
+function compressImage(file, maxSide = PHOTO_MAX, quality = PHOTO_QUALITY, stamp = false){
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
