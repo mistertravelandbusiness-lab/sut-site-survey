@@ -60,17 +60,26 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         web = new WebView(this);
         web.setBackgroundColor(0xFF060B18);
+        // Méthode de la WebView de référence : marges hors des barres système.
+        web.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        web.setHorizontalScrollBarEnabled(false);
+        web.setVerticalScrollBarEnabled(true);
         setContentView(web);
+        try {
+            getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF060B18));
+            getWindow().setStatusBarColor(0xFF060B18);
+            getWindow().setNavigationBarColor(0xFF060B18);
+        } catch (Exception ignored) {}
         web.setOnApplyWindowInsetsListener((v, insets) -> {
-            if (Build.VERSION.SDK_INT >= 30) {
-                android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
-                v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
-            } else {
-                v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
-            }
-            return insets;
+            try {
+                android.view.ViewGroup.MarginLayoutParams lp = (android.view.ViewGroup.MarginLayoutParams) v.getLayoutParams();
+                lp.setMargins(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
+                    insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+                v.setLayoutParams(lp);
+            } catch (Exception ignored) {}
+            return insets.consumeSystemWindowInsets();
         });
-        web.requestApplyInsets();
+        try { web.requestApplyInsets(); } catch (Exception ignored) {}
         configure(web);
 
         web.loadUrl(APP_URL);
@@ -109,8 +118,10 @@ public class MainActivity extends Activity {
         s.setGeolocationEnabled(true);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
-        s.setSupportZoom(false);
-        s.setBuiltInZoomControls(false);
+        s.setSupportZoom(true);
+        s.setBuiltInZoomControls(true);
+        s.setDisplayZoomControls(false);
+        s.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);

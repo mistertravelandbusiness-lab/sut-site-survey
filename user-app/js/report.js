@@ -136,7 +136,7 @@ function viewEditor(isExisting){
       ${isExisting ? `<button class="ghost" onclick="exportOne()">📤 Excel</button>` : ''}
       ${isExisting ? `<button class="red" onclick="deleteCurrent()">🗑️</button>` : ''}
     </div>
-    <div class="small" style="margin-top:7px">Les modifications sont enregistrées automatiquement en ligne ; hors ligne, elles restent sur ce téléphone en attendant la connexion.</div>
+    <div class="small" id="autoSaveState" role="status" style="margin-top:7px">Enregistrement automatique activé</div>
   </div>`;
 }
 
@@ -373,7 +373,7 @@ async function saveCurrent(){
 
 function queuePending(r){
   const copy = JSON.parse(JSON.stringify(r));
-  if (!copy.id || !String(copy.id).startsWith('local-')) copy.id = 'local-' + Date.now();
+  if (!copy.id) copy.id = 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
   const i = ST.pending.findIndex(x => x.id === copy.id);
   if (i >= 0) ST.pending[i] = copy; else ST.pending.unshift(copy);
   // visible aussi dans la liste locale
@@ -411,7 +411,22 @@ async function confirmLeave(){
 let draftTimer = null;
 let cloudTimer = null;
 let cloudFlight = null;
+let cloudRevision = 0;
+function autoSaveState(text, error){
+  const el = document.getElementById('autoSaveState');
+  if (el) { el.textContent = text; el.style.color = error ? '#fbbf24' : ''; }
+}
+function secureReportId(){
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+  const h = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+}
 function saveDraftSoon(){
+  cloudRevision++;
+  autoSaveState(navigator.onLine ? 'Enregistrement en cours…' : 'Hors ligne : sauvegardé sur ce téléphone, envoi en attente', !navigator.onLine);
   clearTimeout(draftTimer);
   clearTimeout(cloudTimer);
   draftTimer = setTimeout(saveDraft, 400);
@@ -419,16 +434,16 @@ function saveDraftSoon(){
 }
 async function autoSaveCurrent(){
   if (!ST.user || !ST.current || DEMO) return;
-  if (!navigator.onLine) { cloudTimer = setTimeout(autoSaveCurrent, 30000); return; }
+  if (!navigator.onLine) { autoSaveState('Hors ligne : envoi en attente', true); cloudTimer = setTimeout(autoSaveCurrent, 30000); return; }
   if (cloudFlight) { cloudTimer = setTimeout(autoSaveCurrent, 2000); return; }
   const current = ST.current, owner = ST.user.id;
-  if (!Object.keys(FR_FIELDS).some(k => k !== 'date' && current[k])) return;
+  if (!Object.keys(FR_FIELDS).some(k => k !== 'date' && current[k]) && !Object.keys(ST.currentPhotos || {}).length) return;
   if (current.id && String(current.id).startsWith('local-')) return;
   if (!current.id) {
-    if (!crypto.randomUUID) return; // preserve the local draft if secure UUID generation is unavailable
-    current.id = crypto.randomUUID();
+    current.id = secureReportId();
     saveDraft();
   }
+  const revision = cloudRevision;
   const snapshot = JSON.parse(JSON.stringify(current));
   snapshot.photo_slots = { ...ST.currentPhotos };
   cloudFlight = (async () => {
@@ -444,9 +459,14 @@ async function autoSaveCurrent(){
       }
       if (!ST.user || ST.user.id !== owner) return;
       await saveReportToCloud(snapshot);
-      if (ST.user && ST.user.id === owner && ST.current === current) saveDraft();
+      if (ST.user && ST.user.id === owner && ST.current === current) {
+        saveDraft();
+        if (revision === cloudRevision) autoSaveState('Enregistré en ligne ✓');
+        else { autoSaveState('Enregistrement des dernières modifications…'); clearTimeout(cloudTimer); cloudTimer = setTimeout(autoSaveCurrent, 500); }
+      }
     } catch (e) {
       console.warn('Enregistrement automatique en attente', e.message);
+      autoSaveState('Envoi en attente : ' + (e.message || 'connexion impossible'), true);
       if (ST.user && ST.user.id === owner && ST.current === current) cloudTimer = setTimeout(autoSaveCurrent, 30000);
     }
   })();

@@ -523,8 +523,18 @@ async function syncNow(silent){
   let ok = 0;
   const rest = [];
   for (const p of ST.pending){
-    try { await saveReportToCloud(p); ok++; }
-    catch (e){ console.warn('sync', e.message); rest.push(p); }
+    try {
+      const photos = { ...(p.photo_slots || {}) };
+      for (const k of Object.keys(photos)) {
+        const ref = String(photos[k] || '');
+        if (!ref.startsWith('local:')) continue;
+        const blob = await idbGet(ref.slice(6));
+        if (!blob) throw new Error('Photo locale introuvable');
+        photos[k] = await uploadPhoto(blob, p.id, k, ST.user.id, p.locality_id);
+        p.photo_slots[k] = photos[k];
+      }
+      await saveReportToCloud({ ...p, photo_slots: photos }); ok++;
+    } catch (e){ console.warn('sync', e.message); rest.push(p); }
   }
   ST.pending = rest;
   stateSavePending(); updateSyncDot();
