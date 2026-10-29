@@ -78,7 +78,7 @@ function renderLogin(msg){
       </div>
       <div id="loginPane">
         <label class="fl">Nom d'utilisateur</label>
-        <input id="liUser" autocomplete="username" placeholder="ex : karim.tech" autocapitalize="none" spellcheck="false">
+        <input id="liUser" autocomplete="username" placeholder="Nom d’utilisateur" autocapitalize="none" spellcheck="false">
         <label class="fl">Mot de passe</label>
         <div class="pwwrap">
           <input id="liPass" type="password" autocomplete="current-password" placeholder="••••••••">
@@ -89,7 +89,7 @@ function renderLogin(msg){
       </div>
       <div id="signupPane" class="hidden">
         <label class="fl">Nom d'utilisateur</label>
-        <input id="suUser" autocomplete="username" placeholder="ex : karim.tech" autocapitalize="none" spellcheck="false">
+        <input id="suUser" autocomplete="username" placeholder="Nom d’utilisateur" autocapitalize="none" spellcheck="false">
         <label class="fl">Mot de passe (6 caractères min.)</label>
         <div class="pwwrap">
           <input id="suPass" type="password" autocomplete="new-password" placeholder="••••••••">
@@ -98,7 +98,6 @@ function renderLogin(msg){
         <label class="fl">Confirmer le mot de passe</label>
         <input id="suPass2" type="password" autocomplete="new-password" placeholder="••••••••">
         <button class="block green" id="btnSignup" style="margin-top:14px">Créer mon compte</button>
-        <p class="small center" style="margin-top:10px">Inscription libre — pas de validation par e-mail.</p>
       </div>
       ${msg ? `<div class="banner bad" style="margin-top:12px">${esc(msg)}</div>` : ''}
       ${DEMO ? `<div class="banner warn" style="margin-top:12px">Mode démo (base non configurée)</div>` : ''}
@@ -124,9 +123,9 @@ function renderLogin(msg){
 function switchAuthTab(which){
   const isLogin = which === 'login';
   $('#tabLogin').classList.toggle('active', isLogin);
-  $('#tabSignup').classList.toggle('active', !isLogin);
+  $('#tabSignup')?.classList.toggle('active', !isLogin);
   $('#loginPane').classList.toggle('hidden', !isLogin);
-  $('#signupPane').classList.toggle('hidden', isLogin);
+  $('#signupPane')?.classList.toggle('hidden', isLogin);
 }
 
 async function doLogin(){
@@ -341,9 +340,9 @@ function route(r){
   const app = $('#app');
   if (!app) return;
   switch (r){
-    case 'home':    app.innerHTML = viewAdminHome(); loadAdminHome(); break;
+    case 'home':    app.innerHTML = viewAdminHome(); loadAdminHome(); loadSurveyControl(); break;
     case 'reports': app.innerHTML = viewAll(); loadAll(); break;
-    case 'export':  app.innerHTML = viewExport(); break;
+    case 'export':  app.innerHTML = viewExport(); loadAdminExport(); break;
     case 'sync':    app.innerHTML = viewSync(); break;
     case 'help':    app.innerHTML = viewHelp(); break;
     case 'admin':   app.innerHTML = viewAdmin(); loadAdmin(); break;
@@ -514,6 +513,7 @@ function viewAdminHome(){
       <button class="ghost" onclick="route('all')">🗂️ Tous les rapports</button>
     </div>
   </div>
+  <div id="surveyControl" class="card"><h2>Accès SUT Survey</h2><div class="loader"></div></div>
   <div id="adminDash"><div class="card"><div class="loader"></div></div></div>`;
 }
 
@@ -569,7 +569,7 @@ function viewSync(){
     <div class="card">
       <h2>Comment ça marche ?</h2>
       <p class="small" style="margin-top:6px">Les rapports sont d'abord enregistrés <b>sur le téléphone</b>.
-      Dès que le réseau revient, touche « Synchroniser » : ils partent vers la base et sont visibles pour l'administrateur.
+      Dès que le réseau revient, ils sont envoyés automatiquement et deviennent visibles pour l'administrateur.
       Les photos suivent le même chemin.</p>
     </div>`;
 }

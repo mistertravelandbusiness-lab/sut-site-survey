@@ -61,10 +61,7 @@ function viewExport(){
       <h2>📤 Exporter les rapports</h2>
       <p class="small">Le fichier porte le nom du <b>Locality ID</b> :
         <kbd>ORA-BEJ-0142.xlsx</kbd>. Sélectionnez un rapport à la fois pour conserver la mise en page et les photos.</p>
-      <div class="row tight" style="margin-top:10px">
-        <button class="ghost sm" onclick="exportSelectAll()">Tout sélectionner</button>
-        <button class="ghost sm" onclick="exportSelectNone()">Aucun</button>
-      </div>
+
     </div>
     <div class="card" style="padding:11px">
       ${list.length ? list.map(r => `
@@ -80,7 +77,6 @@ function viewExport(){
     </div>
     <div class="card">
       <button class="block green" onclick="exportSelected()">📤 Exporter la sélection</button>
-      <button class="block ghost" style="margin-top:8px" onclick="exportAllLocal()">📦 Exporter tous mes rapports</button>
       <p class="small" style="margin-top:9px">Choisissez le dossier d’enregistrement sur votre téléphone. Il s'ouvre dans Excel / WPS / Google Sheets.</p>
     </div>`;
 }

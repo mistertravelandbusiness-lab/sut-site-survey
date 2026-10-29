@@ -31,7 +31,7 @@ jobs:
           for P in 8091 8092; do
             curl -s -o /dev/null -w "port $P index %{http_code}\n" http://localhost:$P/
             for f in index.html css/app.css js/app.js js/report.js js/export.js js/admin.js \
-                     vendor/supabase.js vendor/xlsx.full.min.js img/icon-512.png; do
+                     vendor/supabase.js vendor/xlsx.full.min.js js/access-control.js img/icon-512.png; do
               code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$P/$f")
               test "$code" = "200" || (echo "ASSET MANQUANT ($P) $f" && exit 1)
             done

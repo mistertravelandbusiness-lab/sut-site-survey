@@ -40,6 +40,7 @@ function boot(){
   attachRipple();
   bindGlobalEvents();
   setTimeout(hideSplash, 700);
+  startSurveyMonitor();
   startAuthFlow();
 }
 
@@ -51,6 +52,7 @@ function hideSplash(){
 /* ---------------- Auth ---------------- */
 async function startAuthFlow(){
   if (DEMO){ enterDemo(); return; }
+  if (!await readSurveyAccess()) return;
   const { data } = await sb.auth.getSession();
   if (data && data.session && data.session.user) await enterApp(data.session.user);
   else renderLogin();
@@ -79,7 +81,7 @@ function renderLogin(msg){
       </div>
       <div id="loginPane">
         <label class="fl">Nom d'utilisateur</label>
-        <input id="liUser" autocomplete="username" placeholder="ex : karim.tech" autocapitalize="none" spellcheck="false">
+        <input id="liUser" autocomplete="username" placeholder="Nom d’utilisateur" autocapitalize="none" spellcheck="false">
         <label class="fl">Mot de passe</label>
         <div class="pwwrap">
           <input id="liPass" type="password" autocomplete="current-password" placeholder="••••••••">
@@ -90,7 +92,7 @@ function renderLogin(msg){
       </div>
       <div id="signupPane" class="hidden">
         <label class="fl">Nom d'utilisateur</label>
-        <input id="suUser" autocomplete="username" placeholder="ex : karim.tech" autocapitalize="none" spellcheck="false">
+        <input id="suUser" autocomplete="username" placeholder="Nom d’utilisateur" autocapitalize="none" spellcheck="false">
         <label class="fl">Mot de passe (6 caractères min.)</label>
         <div class="pwwrap">
           <input id="suPass" type="password" autocomplete="new-password" placeholder="••••••••">
@@ -99,7 +101,6 @@ function renderLogin(msg){
         <label class="fl">Confirmer le mot de passe</label>
         <input id="suPass2" type="password" autocomplete="new-password" placeholder="••••••••">
         <button class="block green" id="btnSignup" style="margin-top:14px">Créer mon compte</button>
-        <p class="small center" style="margin-top:10px">Inscription libre — pas de validation par e-mail.</p>
       </div>
       ${msg ? `<div class="banner bad" style="margin-top:12px">${esc(msg)}</div>` : ''}
       ${DEMO ? `<div class="banner warn" style="margin-top:12px">Mode démo (base non configurée)</div>` : ''}
@@ -125,12 +126,13 @@ function renderLogin(msg){
 function switchAuthTab(which){
   const isLogin = which === 'login';
   $('#tabLogin').classList.toggle('active', isLogin);
-  $('#tabSignup').classList.toggle('active', !isLogin);
+  $('#tabSignup')?.classList.toggle('active', !isLogin);
   $('#loginPane').classList.toggle('hidden', !isLogin);
-  $('#signupPane').classList.toggle('hidden', isLogin);
+  $('#signupPane')?.classList.toggle('hidden', isLogin);
 }
 
 async function doLogin(){
+  if (surveyPaused !== false) { surveyLogoOverlay(true); return; }
   const u = $('#liUser').value.trim();
   const p = $('#liPass').value;
   if (!u || !p) return toast('Nom d\'utilisateur et mot de passe requis', 'err');
@@ -146,6 +148,7 @@ async function doLogin(){
 }
 
 async function doSignup(){
+  if (surveyPaused !== false) { surveyLogoOverlay(true); return; }
   const u = $('#suUser').value.trim();
   const p = $('#suPass').value;
   const p2 = $('#suPass2').value;
@@ -181,6 +184,7 @@ function tradAuthError(m){
 }
 
 async function enterApp(user){
+  if (surveyPaused !== false) { surveyLogoOverlay(true); return; }
   ST.user = user;
   $('#lock')?.remove();
   // profil (username + rôle)
@@ -201,6 +205,7 @@ async function enterApp(user){
     try { await sb.from('users').update({ username: wanted }).eq('id', user.id); } catch (e){}
   }
   if (!ST.profile.username) ST.profile.username = (user.email || '').split('@')[0];
+  if (surveyPaused !== false || !ST.user) { surveyLogoOverlay(true); return; }
   buildShell();
   await refreshReports();
   stateLoadPending();
@@ -518,7 +523,7 @@ function viewSync(){
     <div class="card">
       <h2>Comment ça marche ?</h2>
       <p class="small" style="margin-top:6px">Les rapports sont d'abord enregistrés <b>sur le téléphone</b>.
-      Dès que le réseau revient, touche « Synchroniser » : ils partent vers la base et sont visibles pour l'administrateur.
+      Dès que le réseau revient, ils sont envoyés automatiquement et deviennent visibles pour l'administrateur.
       Les photos suivent le même chemin.</p>
     </div>`;
 }

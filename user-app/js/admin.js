@@ -12,8 +12,7 @@ function viewAdmin(){
     <div class="sectitle">Administration</div>
     <div class="card">
       <h2>🛡️ Utilisateurs</h2>
-      <p class="small">Inscription libre : chaque collègue crée son compte. L'administrateur peut supprimer un compte
-        (ses rapports sont supprimés avec lui).</p>
+      <p class="small">Gestion des comptes et des rapports.</p>
       <div class="row tight" style="margin-top:9px">
         <button class="ghost sm" onclick="loadAdmin()">⟳ Actualiser</button>
         <button class="ghost sm" onclick="route('all')">🗂️ Tous les rapports</button>

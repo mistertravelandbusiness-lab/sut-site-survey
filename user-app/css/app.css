@@ -320,3 +320,9 @@ main,.card,.row,.grid{min-width:0}
 img{max-width:100%}
 @media(max-width:380px){header{gap:4px;padding:6px}header b{font-size:12px}header button{font-size:11px}main{padding-left:10px;padding-right:10px}.lockbox{padding:16px}.tabbtn{font-size:9px}}
 @media(max-height:600px){#lock{align-items:flex-start}.lockbox{margin:auto}.lockbox .brand{margin-bottom:4px}.lockbox .brand .bmark{width:42px;height:42px}}
+
+/* Mode désactivé : le logo seul reste à l’écran. */
+#surveyPauseOverlay{position:fixed;inset:0;z-index:99999;background:#060b18;display:flex;align-items:center;justify-content:center}
+#surveyPauseOverlay img{width:min(120px,32vw);height:auto;animation:surveyLogoPulse 1.8s ease-in-out infinite}
+@keyframes surveyLogoPulse{0%,100%{opacity:.45;transform:scale(.94)}50%{opacity:1;transform:scale(1.04)}}
+@media(prefers-reduced-motion:reduce){#surveyPauseOverlay img{animation:none;opacity:1}}
