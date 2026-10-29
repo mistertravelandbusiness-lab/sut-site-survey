@@ -216,7 +216,7 @@ async function doLogout(){
   const signingOut = sb ? sb.auth.signOut({ scope: 'local' }) : Promise.resolve();
   ST.user = null; ST.profile = null; ST.current = null;
   ST.reports = []; ST.pending = []; ST.currentPhotos = {};
-  document.body.innerHTML = '';
+  document.body.innerHTML = '<main id="app"></main><div id="toast"></div>';
   renderLogin();
   try { await signingOut; } catch (e) { console.warn('Local sign out failed'); }
 }

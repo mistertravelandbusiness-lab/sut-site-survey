@@ -136,7 +136,7 @@ function viewEditor(isExisting){
       ${isExisting ? `<button class="ghost" onclick="exportOne()">📤 Excel</button>` : ''}
       ${isExisting ? `<button class="red" onclick="deleteCurrent()">🗑️</button>` : ''}
     </div>
-    <div class="small" style="margin-top:7px">Enregistrer envoie le rapport sur la base (ou le garde en attente si hors ligne).</div>
+    <div class="small" style="margin-top:7px">Les modifications sont enregistrées automatiquement en ligne ; hors ligne, elles restent sur ce téléphone en attendant la connexion.</div>
   </div>`;
 }
 
@@ -271,6 +271,7 @@ async function fillGPS(){
     set('latitude', g.lat.toFixed(6));
     set('longitude', g.lng.toFixed(6));
     if (g.alt != null) set('altitude', Math.round(g.alt));
+    saveDraftSoon();
     toast(`Position captée (±${Math.round(g.acc || 0)} m)`);
   } catch (e){
     toast(e.message, 'err');
@@ -300,6 +301,8 @@ function validateReport(r){
 
 /* ---------------- Enregistrement ---------------- */
 async function saveCurrent(){
+  clearTimeout(cloudTimer);
+  if (cloudFlight) await cloudFlight;
   const r = collectForm();
   const errs = validateReport(r);
   if (errs.length){
@@ -406,9 +409,48 @@ async function confirmLeave(){
 
 /* ---------------- Brouillon local ---------------- */
 let draftTimer = null;
+let cloudTimer = null;
+let cloudFlight = null;
 function saveDraftSoon(){
   clearTimeout(draftTimer);
-  draftTimer = setTimeout(saveDraft, 900);
+  clearTimeout(cloudTimer);
+  draftTimer = setTimeout(saveDraft, 400);
+  cloudTimer = setTimeout(autoSaveCurrent, 2000);
+}
+async function autoSaveCurrent(){
+  if (!ST.user || !ST.current || DEMO) return;
+  if (!navigator.onLine) { cloudTimer = setTimeout(autoSaveCurrent, 30000); return; }
+  if (cloudFlight) { cloudTimer = setTimeout(autoSaveCurrent, 2000); return; }
+  const current = ST.current, owner = ST.user.id;
+  if (!Object.keys(FR_FIELDS).some(k => k !== 'date' && current[k])) return;
+  if (current.id && String(current.id).startsWith('local-')) return;
+  if (!current.id) {
+    if (!crypto.randomUUID) return; // preserve the local draft if secure UUID generation is unavailable
+    current.id = crypto.randomUUID();
+    saveDraft();
+  }
+  const snapshot = JSON.parse(JSON.stringify(current));
+  snapshot.photo_slots = { ...ST.currentPhotos };
+  cloudFlight = (async () => {
+    try {
+      for (const key of Object.keys(snapshot.photo_slots)) {
+        const ref = snapshot.photo_slots[key];
+        if (!String(ref).startsWith('local:')) continue;
+        const blob = await idbGet(String(ref).slice(6));
+        if (!blob) throw new Error('Photo locale introuvable');
+        const path = await uploadPhoto(blob, snapshot.id, key, owner, snapshot.locality_id);
+        snapshot.photo_slots[key] = path;
+        if (ST.user && ST.user.id === owner && ST.current === current && ST.currentPhotos[key] === ref) ST.currentPhotos[key] = path;
+      }
+      if (!ST.user || ST.user.id !== owner) return;
+      await saveReportToCloud(snapshot);
+      if (ST.user && ST.user.id === owner && ST.current === current) saveDraft();
+    } catch (e) {
+      console.warn('Enregistrement automatique en attente', e.message);
+      if (ST.user && ST.user.id === owner && ST.current === current) cloudTimer = setTimeout(autoSaveCurrent, 30000);
+    }
+  })();
+  try { await cloudFlight; } finally { cloudFlight = null; }
 }
 function saveDraft(){
   try {
@@ -437,6 +479,7 @@ function resumeDraft(){
     setNav('new');
     $('#app').innerHTML = viewEditor(false);
     wireEditor();
+    saveDraftSoon();
     toast('Brouillon repris');
     return true;
   } catch (e){ return false; }
